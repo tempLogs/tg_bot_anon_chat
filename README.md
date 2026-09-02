@@ -88,7 +88,8 @@ DatabaseManager
 
 AdminServer
 Предоставляет интерфейс взаимодействия с административной консолью
-через Named Pipes.```
+через Named Pipes.
+```
 
 
 ## Tech Stack
