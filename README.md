@@ -66,7 +66,7 @@ tg_bot_anon_chat/
 │
 └── admin_console/
     └── Program.cs
-
+```
 
 
 BotHandler
@@ -89,7 +89,6 @@ DatabaseManager
 AdminServer
 Предоставляет интерфейс взаимодействия с административной консолью
 через Named Pipes.
-```
 
 
 ## Tech Stack
