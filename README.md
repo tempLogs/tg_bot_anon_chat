@@ -88,4 +88,34 @@ DatabaseManager
 
 AdminServer
 Предоставляет интерфейс взаимодействия с административной консолью
-через Named Pipes.
+через Named Pipes.```
+
+
+## Tech Stack
+
+- C#
+- .NET 8
+- Telegram Bot API
+- Telegram.Bot
+- SQLite
+- Asynchronous Programming (`async`/`await`)
+- Named Pipes (IPC)
+
+
+## Getting Started
+
+### Prerequisites
+
+- .NET 8 SDK
+- Windows
+- A Telegram Bot Token
+
+### Configuration
+
+Для запуска необходимо указать в файле tg_bot_anon_chat/tg_bot_anon_chat/Program.cs свой токен Telegram-бота
+*примечание*: никогда никому не передавайте свой токен
+
+### Build
+
+```bash
+dotnet build
