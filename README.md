@@ -113,6 +113,7 @@ AdminServer:
 ### Configuration
 
 Для запуска необходимо указать в файле tg_bot_anon_chat/tg_bot_anon_chat/Program.cs свой токен Telegram-бота
+
 *примечание*: никогда никому не передавайте свой токен
 
 ### Build
