@@ -7,18 +7,34 @@ namespace tg_bot_anon_chat
 {
     class AdminServer()
     {
-        private static readonly NamedPipeServerStream server = new("BotPipe", PipeDirection.InOut);
-        public static readonly StreamReader reader = new(server, Encoding.UTF8);
-        public static readonly StreamWriter writer = new(server, Encoding.UTF8);
+        private static NamedPipeServerStream server = new("BotPipe", PipeDirection.InOut);
+        public static StreamReader reader = new(server, Encoding.UTF8, leaveOpen: true);
+        public static StreamWriter writer = new(server, Encoding.UTF8, leaveOpen: true);
 
         public static async Task StartServer()
         {
-            Process.Start(new ProcessStartInfo
+            string consolePath = @"..\..\..\..\..\admin_console\admin_console\bin\Debug\net8.0\admin_console.exe";
+            if (File.Exists(consolePath))
             {
-                FileName = @"..\..\..\..\..\admin_console\admin_console\bin\Debug\net8.0\admin_console.exe",
-                UseShellExecute = true
-            });
+                try
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = consolePath,
+                        UseShellExecute = true
+                    });
+                }
+                catch (System.ComponentModel.Win32Exception ex)
+                {
+                    Console.WriteLine($"Cannot start admin console: {ex.Message}. Start it manually.");
+                }
+            }
+            else
+            {
+                Console.WriteLine("Admin console executable was not found. Start the console manually.");
+            }
 
+            Console.WriteLine("Waiting for admin console...");
             await server.WaitForConnectionAsync();
 
             Console.WriteLine("AdminConsole connected...");
@@ -26,10 +42,55 @@ namespace tg_bot_anon_chat
 
         public static bool StartConsoleCommand(CancellationTokenSource cts, DateTime startTime)
         {
+            while (true)
+            {
+                try
+                {
+                    return ReadConsoleCommands(cts, startTime);
+                }
+                catch (IOException)
+                {
+                    Console.WriteLine("Admin console disconnected.");
+                    ReconnectConsole();
+                }
+            }
+        }
+
+        private static void ReconnectConsole()
+        {
+            try
+            {
+                writer.Dispose();
+            }
+            catch (IOException)
+            {
+
+            }
+            finally
+            {
+                reader.Dispose();
+                server.Dispose();
+            }
+
+            server = new NamedPipeServerStream("BotPipe", PipeDirection.InOut);
+            reader = new StreamReader(server, Encoding.UTF8, leaveOpen: true);
+            writer = new StreamWriter(server, Encoding.UTF8, leaveOpen: true);
+            Console.WriteLine("Waiting for admin console...");
+            server.WaitForConnection();
+            Console.WriteLine("AdminConsole connected...");
+        }
+
+        private static string ReadInput()
+        {
+            return reader.ReadLine() ?? throw new EndOfStreamException();
+        }
+
+        private static bool ReadConsoleCommands(CancellationTokenSource cts, DateTime startTime)
+        {
             string? consoleCommand = null;
             while (!(consoleCommand == "/start" && cts.IsCancellationRequested))
             {
-                consoleCommand = reader.ReadLine();
+                consoleCommand = ReadInput();
                 switch (consoleCommand)
                 {
                     case "/help":
@@ -37,7 +98,10 @@ namespace tg_bot_anon_chat
                         writer.Flush();
                         break;
                     case "/clearlog":
-                        Console.Clear();
+                        if (!Console.IsOutputRedirected)
+                            Console.Clear();
+                        writer.WriteLine("Log is cleared.");
+                        writer.Flush();
                         break;
 
                     case "/start":
@@ -65,17 +129,26 @@ namespace tg_bot_anon_chat
 
                     case "/exit":
                         cts.Cancel();
+                        try
+                        {
+                            writer.WriteLine("Bye.");
+                            writer.Flush();
+                        }
+                        catch (IOException)
+                        {
+
+                        }
                         return false;
 
                     case "/status":
                         writer.WriteLine("Write userId:");
                         writer.Flush();
                         long userId;
-                        if (long.TryParse(reader.ReadLine(), out userId) && DatabaseManager.CheckUserExists(userId))
+                        if (long.TryParse(ReadInput(), out userId) && DatabaseManager.CheckUserExists(userId))
                         {
                             writer.WriteLine("Write status (Confirmed, Suspected, Banned):");
                             writer.Flush();
-                            string? status = reader.ReadLine();
+                            string? status = ReadInput();
                             if (status == "Confirmed" || status == "Suspected" || status == "Banned")
                             {
                                 DatabaseManager.ChangeUserStatus(userId, status ?? "");
@@ -111,7 +184,7 @@ namespace tg_bot_anon_chat
                         {
                             writer.WriteLine("Write userId:");
                             writer.Flush();
-                            if (long.TryParse(reader.ReadLine(), out userId) && DatabaseManager.CheckReportExists(userId))
+                            if (long.TryParse(ReadInput(), out userId) && DatabaseManager.CheckReportExists(userId))
                             {
                                 DatabaseManager.CancelReport(userId);
                                 writer.WriteLine("Successfully.");
